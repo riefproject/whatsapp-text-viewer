@@ -25,30 +25,69 @@ export const parseWhatsAppChat = (rawText) => {
     // Mencakup variasi seperti " <Pesan ini diedit>" atau di baris baru.
     const editedMessagePattern = /^(.*?)\s*(?:<Pesan ini diedit>|Pesan ini telah diedit|This message was edited|&lt;Pesan ini diedit&gt;)$/si;
 
+    // Regex untuk deteksi media dengan teks opsional di bawahnya
+    const mediaPattern = /([\w-]+\.\w+)\s+\(file terlampir\)(?:\n(.*))?/i;
 
     const lines = rawText.split('\n');
     let currentMessageObject = null;
 
     const sanitize = (str) => str.replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+    // Helper untuk menentukan tipe media berdasarkan ekstensi file
+    const getMediaType = (filename) => {
+        const extension = filename.toLowerCase().split('.').pop();
+        
+        // Image types
+        if (['png', 'jpg', 'jpeg'].includes(extension)) return 'image';
+        
+        // Sticker types
+        if (['webp'].includes(extension)) return 'sticker';
+        
+        // Video types
+        if (['mp4', 'mov', '3gp', 'mkv'].includes(extension)) return 'video';
+        
+        // Audio types
+        if (['opus', 'mp3', 'wav', 'ogg', 'aac', 'm4a'].includes(extension)) return 'audio';
+        
+        // Common document types
+        if (['docx', 'doc', 'xlsx', 'xls', 'pdf', 'ppt', 'pptx', 'csv'].includes(extension)) return 'document';
+        
+        // Other file types
+        return 'file';
+    };
+
     const processAndPushMessage = () => {
         if (!currentMessageObject) return;
 
-        // 1. Cek dan proses pesan yang diedit
-        const editMatch = currentMessageObject.message.match(editedMessagePattern);
-        if (editMatch) {
-            currentMessageObject.message = editMatch[1].trim(); // Ambil pesan bersih
-            currentMessageObject.edited = true; // Tambah properti edited
+        // 1. Cek jika pesan mengandung media
+        const mediaMatch = currentMessageObject.message.match(mediaPattern);
+        if (mediaMatch) {
+            const fileName = mediaMatch[1];
+            const messageText = mediaMatch[2] || ''; // Teks opsional setelah "file terlampir"
+            
+            currentMessageObject.media = {
+                type: getMediaType(fileName),
+                name: fileName
+            };
+            
+            // Update pesan dengan teks setelah "file terlampir" jika ada
+            currentMessageObject.message = messageText.trim();
+        } else {
+            // 2. Cek dan proses pesan yang diedit
+            const editMatch = currentMessageObject.message.match(editedMessagePattern);
+            if (editMatch) {
+                currentMessageObject.message = editMatch[1].trim(); // Ambil pesan bersih
+                currentMessageObject.edited = true; // Tambah properti edited
+            }
         }
 
-        // 2. Pastikan pesan tidak kosong setelah diproses
-        if (currentMessageObject.message.trim() !== '') {
+        // 3. Pastikan pesan tidak kosong setelah diproses atau memiliki media
+        if (currentMessageObject.message.trim() !== '' || currentMessageObject.media) {
             messages.push(currentMessageObject);
         }
         
         currentMessageObject = null;
     };
-
 
     for (const line of lines) {
         const match = line.match(standardPattern) || line.match(pattern);

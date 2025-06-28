@@ -2,14 +2,16 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { GroupedVirtuoso } from 'react-virtuoso';
 import { FiSettings, FiLogOut } from 'react-icons/fi';
 import ConfirmationModal from './ConfirmationModal';
+import MediaRenderer from './media/MediaRenderer';
 
 // Cache untuk formatted messages
 const messageCache = new Map();
 
 // Memoized formatMessage dengan caching
-const formatMessage = (text) => {
-  if (messageCache.has(text)) {
-    return messageCache.get(text);
+const formatMessage = (text, isMe) => {
+  const cacheKey = `${text}-${isMe}`;
+  if (messageCache.has(cacheKey)) {
+    return messageCache.get(cacheKey);
   }
   
   let formattedText = String(text);
@@ -18,7 +20,11 @@ const formatMessage = (text) => {
   formattedText = formattedText.replace(/_([^\s_](?:[^_]*[^\s_])?)_/g, '<i>$1</i>');
   formattedText = formattedText.replace(/~([^\s~](?:[^~]*[^\s~])?)~/g, '<del>$1</del>');
   
-  messageCache.set(text, formattedText);
+  formattedText = formattedText.replace(
+    /&lt;Media tidak disertakan&gt;|<Media tidak disertakan>|Media tidak disertakan/gi,
+    `<i class="${isMe ? 'text-gray-300' : 'text-gray-400'}">Media tidak disertakan</i>`
+  );
+  messageCache.set(cacheKey, formattedText);
   return formattedText;
 };
 
@@ -34,36 +40,50 @@ const GroupHeader = ({ date }) => {
 };
 
 // Optimized ChatBubble dengan React.memo
-const ChatBubble = ({ message, isMe, isGroupChat }) => {
+const ChatBubble = ({ message, isMe, isGroupChat, mediaEntries }) => {
   const bubbleClasses = isMe ? 'bg-cyan-600 self-end' : 'bg-gray-600 self-start';
   
   // Memoize formatted message per message
   const formattedMessage = useMemo(() => ({ 
-    __html: formatMessage(message.message) 
-  }), [message.message]);
+    __html: formatMessage(message.message, isMe) 
+  }), [message.message, isMe]);
 
   return (
     <div className="p-1 px-3 flex flex-col">
       <div className={`chat-bubble max-w-[80%] md:max-w-[70%] w-fit mb-1 p-3 rounded-xl ${bubbleClasses}`}>
         {isGroupChat && !isMe && <p className="font-bold text-lime-300 text-sm">{message.sender}</p>}
-        <div 
-          className="text-white whitespace-pre-wrap" 
-          style={{wordBreak: 'break-word'}} 
-          dangerouslySetInnerHTML={formattedMessage} 
-        />
+        
+        {/* Render media content if present */}
+        {message.media && (
+          <div className="mb-2">
+            <MediaRenderer 
+              media={message.media} 
+              zipEntries={mediaEntries}
+            />
+          </div>
+        )}
+        
+        {message.message && (
+          <div 
+            className="text-white whitespace-pre-wrap" 
+            style={{wordBreak: 'break-word'}} 
+            dangerouslySetInnerHTML={formattedMessage} 
+          />
+        )}
+        
         <div className="flex justify-between items-center mt-2 text-xs">
           <div className="flex gap-2">
             {message.edited && <span className="italic text-gray-400">Diedit</span>}
             {message.pinned && <span className="italic text-gray-400">Disematkan</span>}
           </div>
-          <p className="text-gray-400">{message.time}</p>
+          <p className={isMe ?'text-gray-200' : 'text-gray-400'}>{message.time}</p>
         </div>
       </div>
     </div>
   );
 };
 
-function ChatView({ messages, currentUser, opponentName, isGroupChat, onReset, onToggleSettings }) {
+function ChatView({ messages, currentUser, opponentName, isGroupChat, onReset, onToggleSettings, mediaEntries }) {
   const virtuosoRef = useRef(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -141,9 +161,10 @@ function ChatView({ messages, currentUser, opponentName, isGroupChat, onReset, o
         message={message}
         isMe={message.sender === currentUser}
         isGroupChat={isGroupChat}
+        mediaEntries={mediaEntries}
       />
     );
-  }, [flattenedMessages, currentUser, isGroupChat]);
+  }, [flattenedMessages, currentUser, isGroupChat, mediaEntries]);
 
   // Group renderer
   const groupRenderer = useCallback((index) => (
