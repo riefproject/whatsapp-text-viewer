@@ -14,7 +14,7 @@ function MediaGallery({ isOpen, onClose, media, docs, links, mediaMap }) {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             {media.length > 0 ? media.map((msg, index) => (
               <div key={index} className="w-full h-32 bg-gray-700 rounded-lg overflow-hidden">
-                 <MediaRenderer media={msg.media} zipEntries={mediaMap} />
+                  <MediaRenderer media={msg.media} zipEntries={mediaMap} />
               </div>
             )) : <p className="col-span-full text-center text-gray-400">Tidak ada media.</p>}
           </div>

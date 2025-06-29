@@ -298,7 +298,7 @@ function App() {
     const galleryData = useMemo(() => {
         if (!parsedData) return { media: [], docs: [], links: [] };
         const urlRegex = /(https?:\/\/[^\s]+)/g;
-        const media = parsedData.messages.filter(m => m.media && (m.media.type === 'image' || m.media.type === 'video' || m.media.type === 'sticker'));
+        const media = parsedData.messages.filter(m => m.media && (m.media.type === 'image' || m.media.type === 'video'));
         const docs = parsedData.messages.filter(m => m.media && (m.media.type === 'document' || m.media.type === 'file' || m.media.type === 'audio'));
         const links = parsedData.messages.flatMap(m => m.message.match(urlRegex) || []);
         return { media, docs, links };
