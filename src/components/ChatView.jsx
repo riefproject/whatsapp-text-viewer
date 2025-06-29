@@ -48,17 +48,22 @@ const ChatBubble = ({ message, isMe, isGroupChat, mediaEntries }) => {
     __html: formatMessage(message.message, isMe) 
   }), [message.message, isMe]);
 
+  // Determine if the bubble should use full width for media
+  const hasMedia = message.media != null;
+
   return (
     <div className="p-1 px-3 flex flex-col">
-      <div className={`chat-bubble max-w-[80%] md:max-w-[70%] w-fit mb-1 p-3 rounded-xl ${bubbleClasses}`}>
+      {/* Make bubbles with media wider */}
+       <div className={`chat-bubble ${hasMedia ? 'w-full' : 'w-fit'} max-w-[75%] md:max-w-[65%] mb-1 p-3 rounded-xl ${bubbleClasses}`}>
         {isGroupChat && !isMe && <p className="font-bold text-lime-300 text-sm">{message.sender}</p>}
         
         {/* Render media content if present */}
         {message.media && (
-          <div className="mb-2">
+          <div className="mb-2 w-full media-container-wrapper">
             <MediaRenderer 
               media={message.media} 
               zipEntries={mediaEntries}
+              bubbleWidth={hasMedia ? 'media-bubble-content' : ''}
             />
           </div>
         )}

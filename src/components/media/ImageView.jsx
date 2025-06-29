@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { FiImage, FiDownload, FiMaximize } from 'react-icons/fi';
 import { createObjectURL } from '../../utils/zipHelper';
 
@@ -6,8 +6,10 @@ const ImageView = ({ filename, file }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [imageUrl, setImageUrl] = useState(null);
+  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
+  const imgRef = useRef(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const loadImage = async () => {
       if (file) {
         try {
@@ -32,6 +34,17 @@ const ImageView = ({ filename, file }) => {
     };
   }, [file, filename]);
 
+  // Handle image load to get dimensions
+  const handleImageLoad = () => {
+    if (imgRef.current) {
+      const { naturalWidth, naturalHeight } = imgRef.current;
+      setImageDimensions({
+        width: naturalWidth,
+        height: naturalHeight
+      });
+    }
+  };
+
   const toggleFullscreen = () => setIsFullscreen(!isFullscreen);
 
   if (isLoading) {
@@ -53,6 +66,40 @@ const ImageView = ({ filename, file }) => {
     );
   }
 
+  // Calculate aspect ratio
+  const aspectRatio = imageDimensions.width / imageDimensions.height;
+  const targetMaxRatio = 3 / 4.5; // Maximum allowed aspect ratio (width/height)
+  
+  // After scaling to max width, check if height exceeds our max ratio
+  const isTooTall = aspectRatio < targetMaxRatio;
+  
+  // Style for image container when cropping is needed
+  const imageContainerStyle = isTooTall ? {
+    width: '100%',
+    paddingBottom: `${(4.5/3) * 100}%`, // Target aspect ratio as padding percentage
+    position: 'relative',
+    overflow: 'hidden',
+    backgroundColor: '#1f2937', // bg-gray-800 equivalent
+    borderRadius: '0.5rem', // rounded-lg
+  } : {};
+  
+  // Style for the actual image
+  const imageStyle = isTooTall ? {
+    position: 'absolute',
+    width: '100%',
+    height: 'auto',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)', // Center the image
+    objectFit: 'cover',
+  } : {
+    width: '100%', 
+    maxHeight: '28rem', // max-h-112 (448px or 28rem)
+    objectFit: 'contain',
+    backgroundColor: '#1f2937', // bg-gray-800
+    borderRadius: '0.5rem', // rounded-lg
+  };
+
   if (isFullscreen) {
     return (
       <div 
@@ -60,26 +107,34 @@ const ImageView = ({ filename, file }) => {
         onClick={toggleFullscreen}
       >
         <img 
+          ref={imgRef}
           src={imageUrl} 
           className="max-w-[90vw] max-h-[90vh] object-contain" 
-          alt={filename} 
+          alt={filename}
+          onLoad={handleImageLoad}
         />
       </div>
     );
   }
 
   return (
-    <div className="media-container">
-      <div className="relative">
+    <div className="media-container w-full">
+      <div className="relative" style={imageContainerStyle}>
         <img 
+          ref={imgRef}
           src={imageUrl}
           alt={filename}
-          className="max-w-full rounded-lg cursor-pointer max-h-64 object-contain bg-gray-800"
+          style={imageStyle}
+          className={isTooTall ? 'cursor-pointer' : 'rounded-lg cursor-pointer bg-gray-800 w-full'}
           onClick={toggleFullscreen}
+          onLoad={handleImageLoad}
         />
-        <div className="absolute top-2 right-2 flex space-x-1">
+        <div className="absolute top-2 right-2 flex space-x-1 z-10">
           <button 
-            onClick={toggleFullscreen}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleFullscreen();
+            }}
             className="p-1 rounded-full bg-gray-800 bg-opacity-70 hover:bg-opacity-100 text-white"
             title="View fullscreen"
           >

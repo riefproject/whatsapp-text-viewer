@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { FiVideo, FiDownload, FiMaximize2, FiMinimize2 } from 'react-icons/fi';
 import { createObjectURL } from '../../utils/zipHelper';
 
@@ -6,9 +6,10 @@ const VideoView = ({ filename, file }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [videoUrl, setVideoUrl] = useState(null);
   const [isExpanded, setIsExpanded] = useState(false);
-  const videoRef = React.useRef(null);
+  const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
+  const videoRef = useRef(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const loadVideo = async () => {
       if (file) {
         try {
@@ -33,7 +34,18 @@ const VideoView = ({ filename, file }) => {
     };
   }, [file, filename]);
 
-  const toggleExpanded = () => {
+  const handleVideoMetadataLoaded = () => {
+    if (videoRef.current) {
+      const { videoWidth, videoHeight } = videoRef.current;
+      setVideoDimensions({
+        width: videoWidth,
+        height: videoHeight
+      });
+    }
+  };
+
+  const toggleExpanded = (e) => {
+    e.stopPropagation();
     setIsExpanded(!isExpanded);
   };
 
@@ -56,17 +68,54 @@ const VideoView = ({ filename, file }) => {
     );
   }
 
+  // Calculate aspect ratio
+  const aspectRatio = videoDimensions.width / videoDimensions.height;
+  const targetMaxRatio = 3 / 4.5; // Maximum allowed aspect ratio (width/height)
+  
+  // After scaling to max width, check if height exceeds our max ratio
+  // Don't apply the cropping when the video is expanded
+  const isTooTall = !isExpanded && aspectRatio < targetMaxRatio;
+  
+  // Style for video container when cropping is needed
+  const videoContainerStyle = isTooTall ? {
+    width: '100%',
+    paddingBottom: `${(4.5/3) * 100}%`, // Target aspect ratio as padding percentage
+    position: 'relative',
+    overflow: 'hidden',
+    backgroundColor: '#1f2937', // bg-gray-800 equivalent
+    borderRadius: '0.5rem', // rounded-lg
+  } : {
+    width: '100%',
+    position: 'relative',
+  };
+  
+  // Style for the actual video
+  const videoStyle = isTooTall ? {
+    position: 'absolute',
+    width: '100%',
+    height: 'auto',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)', // Center the video
+  } : {
+    width: '100%',
+    height: 'auto',
+    maxHeight: isExpanded ? '32rem' : '28rem', // Taller when expanded
+  };
+
   return (
     <div className="media-container w-full">
-      <div className="relative rounded-lg overflow-hidden bg-gray-900">
+      <div className={`${!isTooTall ? 'rounded-lg bg-gray-900' : ''} overflow-hidden`} style={videoContainerStyle}>
         <video 
           ref={videoRef}
           src={videoUrl}
-          className={`w-full rounded-lg ${isExpanded ? 'max-h-96' : 'max-h-48'} object-contain`}
+          style={videoStyle}
+          className={`${!isTooTall ? 'rounded-lg' : ''}`}
           controls
           preload="metadata"
+          onLoadedMetadata={handleVideoMetadataLoaded}
         />
-        <div className="absolute top-2 right-2 flex space-x-1">
+        <div className="absolute top-2 right-2 flex space-x-1 z-10">
           <button 
             onClick={toggleExpanded}
             className="p-1 rounded-full bg-gray-800 bg-opacity-70 hover:bg-opacity-100 text-white"
