@@ -156,6 +156,14 @@ function App() {
                         onToggleSettings={toggleSettingsPanel}
                         mediaEntries={mediaMap}
                     />
+                    {/* Backdrop untuk mobile, hanya muncul saat settings terbuka */}
+                    {isSettingsOpen && (
+                        <div 
+                            onClick={toggleSettingsPanel} 
+                            className="fixed inset-0 bg-black/50 z-10 md:hidden"
+                            aria-hidden="true"
+                        />
+                    )}
                     {isSettingsOpen && <SettingsPanel onClose={toggleSettingsPanel} />}
                 </div>
             );

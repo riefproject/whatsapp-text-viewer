@@ -4,6 +4,30 @@ import { FiSettings, FiLogOut } from 'react-icons/fi';
 import ConfirmationModal from './ConfirmationModal';
 import MediaRenderer from './media/MediaRenderer';
 
+// Daftar warna yang cerah dan mudah dibaca dengan latar belakang gelap
+const SENDER_COLORS = [
+  '#34D399', // emerald-400
+  '#FBBF24', // amber-400
+  '#60A5FA', // blue-400
+  '#F472B6', // pink-400
+  '#A78BFA', // violet-400
+  '#F87171', // red-400
+  '#4ADE80', // green-400
+  '#2DD4BF', // teal-400
+];
+
+// Fungsi untuk mendapatkan warna konsisten berdasarkan nama sender
+const getColorForSender = (senderName) => {
+  if (!senderName) return SENDER_COLORS[0];
+  let hash = 0;
+  for (let i = 0; i < senderName.length; i++) {
+    hash = senderName.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash % SENDER_COLORS.length);
+  return SENDER_COLORS[index];
+};
+
+
 // Cache untuk formatted messages
 const messageCache = new Map();
 
@@ -16,6 +40,7 @@ const formatMessage = (text, isMe) => {
   
   let formattedText = String(text);
   formattedText = formattedText.replace(/```([\s\S]+?)```/g, '<pre class="bg-gray-900 p-2 my-1 rounded-md font-mono text-sm whitespace-pre-wrap break-words"><code>$1</code></pre>');
+  formattedText = formattedText.replace(/`([\s\S]+?)`/g, '<pre class="bg-gray-200 p-2 my-1 rounded-md font-mono text-sm whitespace-pre-wrap break-words"><code>$1</code></pre>');
   formattedText = formattedText.replace(/\*([^\s*](?:[^*]*[^\s*])?)\*/g, '<strong>$1</strong>');
   formattedText = formattedText.replace(/_([^\s_](?:[^_]*[^\s_])?)_/g, '<i>$1</i>');
   formattedText = formattedText.replace(/~([^\s~](?:[^~]*[^\s~])?)~/g, '<del>$1</del>');
@@ -48,6 +73,9 @@ const ChatBubble = ({ message, isMe, isGroupChat, mediaEntries }) => {
     __html: formatMessage(message.message, isMe) 
   }), [message.message, isMe]);
 
+  // Dapatkan warna untuk sender
+  const senderColor = useMemo(() => getColorForSender(message.sender), [message.sender]);
+
   // Determine if the bubble should use full width for media
   const hasMedia = message.media != null;
 
@@ -55,7 +83,7 @@ const ChatBubble = ({ message, isMe, isGroupChat, mediaEntries }) => {
     <div className="p-1 px-3 flex flex-col">
       {/* Make bubbles with media wider */}
        <div className={`chat-bubble ${hasMedia ? 'w-full' : 'w-fit'} max-w-[75%] md:max-w-[65%] mb-1 p-3 rounded-xl ${bubbleClasses}`}>
-        {isGroupChat && !isMe && <p className="font-bold text-lime-300 text-sm">{message.sender}</p>}
+        {isGroupChat && !isMe && message.showSenderName && <p className={`${hasMedia ? 'pb-2' : ''} font-bold text-sm`} style={{ color: senderColor }}>{message.sender}</p>}
         
         {/* Render media content if present */}
         {message.media && (
@@ -136,7 +164,17 @@ function ChatView({ messages, currentUser, opponentName, isGroupChat, onReset, o
     
     const dateGroups = groups.map(g => g.date);
     const groupCounts = groups.map(g => g.messages.length);
-    const flattenedMessages = groups.flatMap(g => g.messages);
+    const initialFlattened = groups.flatMap(g => g.messages);
+
+    // Tambahkan logika untuk menentukan apakah nama sender harus ditampilkan
+    const flattenedMessages = initialFlattened.map((message, index, allMessages) => {
+      const prevMessage = index > 0 ? allMessages[index - 1] : null;
+      const showSenderName = !prevMessage || prevMessage.sender !== message.sender || prevMessage.date !== message.date;
+      return {
+        ...message,
+        showSenderName,
+      };
+    });
     
     return { groupCounts, dateGroups, flattenedMessages };
   }, [sortedMessages]);

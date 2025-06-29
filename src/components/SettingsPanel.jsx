@@ -2,7 +2,7 @@ import { FiX } from 'react-icons/fi';
 
 function SettingsPanel({ onClose }) {
   return (
-    <div className="bg-gray-800 w-full max-w-xs rounded-xl shadow-lg p-4 flex flex-col animate-slide-in-right">
+    <div className="fixed top-0 right-0 h-full z-20 bg-gray-800 w-full max-w-xs rounded-l-xl shadow-lg p-4 flex flex-col animate-slide-in-right md:relative md:rounded-xl md:h-auto md:z-auto">
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-xl font-bold">Pengaturan</h3>
         <button onClick={onClose} className="text-gray-400 hover:text-white"><FiX size={24} /></button>
