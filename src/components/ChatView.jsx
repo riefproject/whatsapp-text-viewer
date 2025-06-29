@@ -179,7 +179,7 @@ function ChatView({ messages, currentUser, opponentName, isGroupChat, onReset, o
   if (sortedMessages.length === 0) {
     return (
       <>
-        <div className="w-full max-w-2xl p-1 rounded-2xl bg-gradient-to-tr from-yellow-300 to-cyan-400 flex-grow">
+        <div className="w-full h-svh max-w-2xl p-1 rounded-2xl bg-gradient-to-tr from-[#c4e07b] to-[#136880] flex-grow">
           <div className="bg-[#2a2a2a] rounded-xl h-[85vh] flex flex-col">
             <header className="flex justify-between items-center p-4 border-b border-gray-700">
               <h2 className="text-lg font-bold text-gray-200">{displayName}</h2>
@@ -211,7 +211,7 @@ function ChatView({ messages, currentUser, opponentName, isGroupChat, onReset, o
 
   return (
     <>
-      <div className="w-full max-w-2xl p-1 rounded-2xl bg-gradient-to-tr from-yellow-300 to-cyan-400 flex-grow">
+      <div className="w-full max-w-2xl p-1 rounded-2xl bg-gradient-to-tr from-[#c4e07b] to-[#136880] flex-grow">
         <div className="bg-[#2a2a2a] rounded-xl h-[85vh] flex flex-col">
           <header className="flex justify-between items-center p-4 border-b border-gray-700">
             <h2 className="text-lg font-bold text-gray-200">{displayName}</h2>

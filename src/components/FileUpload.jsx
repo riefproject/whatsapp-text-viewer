@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { FiDownload } from 'react-icons/fi'; // Import ikon dari react-icons
+import { FiUpload } from 'react-icons/fi'; // Import ikon dari react-icons
 
 function FileUpload({ onFileAccepted }) {
     // Setup react-dropzone
@@ -20,7 +20,7 @@ function FileUpload({ onFileAccepted }) {
     return (
         // 1. Container luar dengan background gradasi
         // p-1 memberikan "ketebalan" pada border
-        <div className="w-full max-w-2xl p-1 rounded-2xl bg-gradient-to-tr from-cyan-400 to-lime-300">
+        <div className="w-full max-w-2xl p-1 rounded-2xl bg-gradient-to-tr from-[#c4e07b] to-[#136880]">
             
             {/* 2. Container dalam yang warnanya sama dengan background utama */}
             {/* Ini akan menjadi area dropzone kita */}
@@ -37,7 +37,7 @@ function FileUpload({ onFileAccepted }) {
         <input {...getInputProps()} />
 
         {/* Ikon Download */}
-        <FiDownload className={`
+        <FiUpload className={`
             text-5xl mb-4 text-cyan-400 
             transition-transform duration-300
             ${isDragActive ? 'scale-125' : ''}
