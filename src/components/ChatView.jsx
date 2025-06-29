@@ -18,36 +18,37 @@ const getColorForSender = (senderName) => {
 
 const messageCache = new Map();
 
-// Fungsi format pesan diperbarui untuk handle highlight
 const formatMessage = (text, isMe, searchTerm) => {
-  const cacheKey = `${text}-${isMe}-${searchTerm}`;
-  if (messageCache.has(cacheKey)) {
-    return messageCache.get(cacheKey);
-  }
-  
-  let formattedText = String(text);
-  formattedText = formattedText.replace(/</g, "&lt;").replace(/>/g, "&gt;"); // Sanitasi dasar
-  
-  // Highlight search term
-  if (searchTerm) {
-    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    formattedText = formattedText.replace(regex, '<mark class="bg-yellow-400 text-black rounded px-1">$1</mark>');
-  }
+    const cacheKey = `${text}-${isMe}-${searchTerm || ''}`;
+    if (messageCache.has(cacheKey)) {
+        return messageCache.get(cacheKey);
+    }
 
-  formattedText = formattedText.replace(/```([\s\S]+?)```/g, '<pre class="bg-gray-900 p-2 my-1 rounded-md font-mono text-sm whitespace-pre-wrap break-words"><code>$1</code></pre>');
-  formattedText = formattedText.replace(/`([^`]+)`/g, '<code class="bg-gray-700 px-1 rounded-md font-mono text-sm">$1</code>');
-  formattedText = formattedText.replace(/\*([^\s*](?:[^*]*[^\s*])?)\*/g, '<strong>$1</strong>');
-  formattedText = formattedText.replace(/_([^\s_](?:[^_]*[^\s_])?)_/g, '<i>$1</i>');
-  formattedText = formattedText.replace(/~([^\s~](?:[^~]*[^\s~])?)~/g, '<del>$1</del>');
-  
-  formattedText = formattedText.replace(
-    /&lt;Media tidak disertakan&gt;|<Media tidak disertakan>|Media tidak disertakan/gi,
-    `<i class="${isMe ? 'text-gray-300' : 'text-gray-400'}">Media tidak disertakan</i>`
-  );
+    let formattedText = String(text);
+    // Sanitasi dasar untuk mencegah injeksi HTML yang tidak diinginkan
+    formattedText = formattedText.replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-  messageCache.set(cacheKey, formattedText);
-  return formattedText;
+    // Hanya highlight jika ada searchTerm
+    if (searchTerm) {
+        const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        formattedText = formattedText.replace(regex, '<mark class="bg-yellow-400 text-black rounded px-1">$1</mark>');
+    }
+
+    formattedText = formattedText.replace(/```([\s\S]+?)```/g, '<pre class="bg-gray-900 p-2 my-1 rounded-md font-mono text-sm whitespace-pre-wrap break-words"><code>$1</code></pre>');
+    formattedText = formattedText.replace(/`([^`]+)`/g, '<code class="bg-gray-700 px-1 rounded-md font-mono text-sm">$1</code>');
+    formattedText = formattedText.replace(/\*([^\s*](?:[^*]*[^\s*])?)\*/g, '<strong>$1</strong>');
+    formattedText = formattedText.replace(/_([^\s_](?:[^_]*[^\s_])?)_/g, '<i>$1</i>');
+    formattedText = formattedText.replace(/~([^\s~](?:[^~]*[^\s~])?)~/g, '<del>$1</del>');
+    
+    formattedText = formattedText.replace(
+        /&lt;Media tidak disertakan&gt;|<Media tidak disertakan>|Media tidak disertakan/gi,
+        `<i class="${isMe ? 'text-gray-300' : 'text-gray-400'}">Media tidak disertakan</i>`
+    );
+
+    messageCache.set(cacheKey, formattedText);
+    return formattedText;
 };
+
 
 const GroupHeader = ({ date }) => {
   return (
@@ -100,7 +101,7 @@ const ChatBubble = ({ message, isMe, isGroupChat, mediaEntries, searchTerm }) =>
 };
 
 // Main ChatView Component
-function ChatView({ messages, currentUser, opponentName, isGroupChat, onReset, onToggleSettings, mediaEntries, searchTerm }) {
+function ChatView({ messages, currentUser, opponentName, isGroupChat, onReset, onToggleSettings, mediaEntries, searchTerm, searchResultIndex }) {
   const virtuosoRef = useRef(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -138,9 +139,20 @@ function ChatView({ messages, currentUser, opponentName, isGroupChat, onReset, o
     return { groupCounts, dateGroups, flattenedMessages: processedMessages };
   }, [messages]);
 
-  // Scroll to bottom on load
+  // Efek untuk auto-scroll ke hasil pencarian
   useEffect(() => {
-    if (virtuosoRef.current && flattenedMessages.length > 0 && !searchTerm) {
+    if (searchResultIndex !== undefined && searchResultIndex !== -1 && virtuosoRef.current) {
+        virtuosoRef.current.scrollToIndex({
+            index: searchResultIndex,
+            align: 'center',
+            behavior: 'smooth',
+        });
+    }
+  }, [searchResultIndex]);
+
+  // Scroll to bottom on initial load
+  useEffect(() => {
+    if (virtuosoRef.current && flattenedMessages.length > 0) {
       setTimeout(() => {
         virtuosoRef.current.scrollToIndex({
           index: flattenedMessages.length - 1,
@@ -148,7 +160,7 @@ function ChatView({ messages, currentUser, opponentName, isGroupChat, onReset, o
         });
       }, 100);
     }
-  }, [flattenedMessages.length, searchTerm]);
+  }, [flattenedMessages.length]);
 
   const displayName = isGroupChat ? "Group Chat" : opponentName;
 
@@ -175,8 +187,6 @@ function ChatView({ messages, currentUser, opponentName, isGroupChat, onReset, o
   const totalMessageCount = useMemo(() => {
       return messages.length;
   }, [messages]);
-
-  const noMessagesText = searchTerm ? 'Tidak ada hasil untuk' : 'Tidak ada pesan untuk ditampilkan';
   
   if (totalMessageCount === 0) {
     return (
@@ -195,10 +205,7 @@ function ChatView({ messages, currentUser, opponentName, isGroupChat, onReset, o
               </div>
             </header>
             <div className="flex-grow flex items-center justify-center text-center px-4">
-                <p className="text-gray-400">
-                    {noMessagesText}
-                    {searchTerm && <strong className="text-white ml-1">"{searchTerm}"</strong>}
-                </p>
+                <p className="text-gray-400">Tidak ada pesan untuk ditampilkan.</p>
             </div>
           </div>
         </div>

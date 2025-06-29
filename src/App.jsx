@@ -8,8 +8,8 @@ import UserSelection from './components/UserSelection';
 import ChatView from './components/ChatView';
 import SettingsPanel from './components/SettingsPanel';
 import FileSelection from './components/media/FileSelection';
-import ChatStatsModal from './components/ChatStatsModal'; // <- Impor
-import MediaGallery from './components/MediaGallery'; // <- Impor
+import ChatStatsModal from './components/ChatStatsModal';
+import MediaGallery from './components/MediaGallery';
 
 function App() {
     const [parsedData, setParsedData] = useState(null);
@@ -23,9 +23,13 @@ function App() {
 
     // State untuk fitur baru
     const [searchTerm, setSearchTerm] = useState('');
-    const [theme, setTheme] = useState('dark'); // 'dark', 'light', etc
+    const [theme, setTheme] = useState('dark');
     const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
     const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+
+    // State khusus untuk navigasi pencarian
+    const [searchResults, setSearchResults] = useState([]); // Menyimpan index pesan yang cocok
+    const [currentResultIndex, setCurrentResultIndex] = useState(-1); // Index dari searchResults
 
     // Reset semua state ke kondisi awal
     const resetState = () => {
@@ -38,10 +42,41 @@ function App() {
         setIsSettingsOpen(false);
         setIsLoading(false);
         setSearchTerm('');
+        setSearchResults([]);
+        setCurrentResultIndex(-1);
         setIsStatsModalOpen(false);
         setIsGalleryOpen(false);
     };
 
+    // Fungsi untuk menjalankan pencarian
+    const handleFind = () => {
+        if (!parsedData || !searchTerm) {
+            setSearchResults([]);
+            setCurrentResultIndex(-1);
+            return;
+        }
+        const results = parsedData.messages
+            .map((msg, index) => msg.message.toLowerCase().includes(searchTerm.toLowerCase()) ? index : -1)
+            .filter(index => index !== -1);
+        
+        setSearchResults(results);
+        if (results.length > 0) {
+            // UBAH DI SINI: Mulai dari hasil terakhir (terbaru)
+            setCurrentResultIndex(results.length - 1);
+        } else {
+            setCurrentResultIndex(-1);
+        }
+    };
+
+    // Fungsi untuk navigasi hasil pencarian
+    const navigateResults = (direction) => {
+        if (searchResults.length === 0) return;
+        const newIndex = currentResultIndex + direction;
+        if (newIndex >= 0 && newIndex < searchResults.length) {
+            setCurrentResultIndex(newIndex);
+        }
+    };
+    
     // Proses konten teks dan update state
     const processTextContent = (textContent) => {
         const result = parseWhatsAppChat(textContent);
@@ -133,16 +168,6 @@ function App() {
         setIsSettingsOpen(prev => !prev);
     };
 
-    // Memoized, difilter berdasarkan searchTerm
-    const filteredMessages = useMemo(() => {
-        if (!parsedData) return [];
-        if (!searchTerm) return parsedData.messages;
-        return parsedData.messages.filter(msg =>
-            msg.message.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [parsedData, searchTerm]);
-
-    // Kalkulasi statistik
     const chatStats = useMemo(() => {
         if (!parsedData) return null;
         const { messages, participants } = parsedData;
@@ -177,7 +202,6 @@ function App() {
         };
     }, [parsedData]);
     
-    // Ekstrak media, dokumen, dan link
     const galleryData = useMemo(() => {
         if (!parsedData) return { media: [], docs: [], links: [] };
         const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -187,12 +211,10 @@ function App() {
         return { media, docs, links };
     }, [parsedData]);
     
-    // Efek untuk tema
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', theme);
     }, [theme]);
 
-    // Render konten utama berdasarkan state
     const renderMainContent = () => {
         if (isLoading) {
             return <p className="text-xl text-gray-300">Memproses file...</p>;
@@ -216,14 +238,15 @@ function App() {
                 <>
                     <div className="w-full flex justify-center items-start gap-6">
                         <ChatView 
-                            messages={filteredMessages} // <- Gunakan pesan yang sudah difilter
+                            messages={parsedData.messages}
                             currentUser={currentUser}
                             opponentName={opponentName}
                             isGroupChat={isGroupChat}
                             onReset={resetState}
                             onToggleSettings={toggleSettingsPanel}
                             mediaEntries={mediaMap}
-                            searchTerm={searchTerm} // <- Prop baru untuk highlight
+                            searchTerm={searchTerm} 
+                            searchResultIndex={searchResults[currentResultIndex]}
                         />
                         {isSettingsOpen && (
                             <div 
@@ -237,6 +260,10 @@ function App() {
                             onClose={toggleSettingsPanel}
                             searchTerm={searchTerm}
                             onSearchChange={setSearchTerm}
+                            onFind={handleFind}
+                            onNavigate={navigateResults}
+                            resultCount={searchResults.length}
+                            currentResultIndex={currentResultIndex}
                             theme={theme}
                             onThemeChange={setTheme}
                             onStatsClick={() => setIsStatsModalOpen(true)}

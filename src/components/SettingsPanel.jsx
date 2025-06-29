@@ -1,18 +1,27 @@
-import { FiX, FiInfo, FiImage, FiCalendar } from 'react-icons/fi';
+import { FiX, FiInfo, FiImage, FiCalendar, FiChevronUp, FiChevronDown, FiSearch } from 'react-icons/fi';
 import { useState } from 'react';
 
-function SettingsPanel({ isOpen, onClose, searchTerm, onSearchChange, theme, onThemeChange, onStatsClick, onGalleryClick }) {
+function SettingsPanel({ 
+    isOpen, onClose, searchTerm, onSearchChange, onFind,
+    onNavigate, resultCount, currentResultIndex,
+    theme, onThemeChange, onStatsClick, onGalleryClick 
+}) {
     const [date, setDate] = useState('');
 
     const handleGoToDate = () => {
         if(date){
-            // Cari elemen dengan data-date yang cocok
             const element = document.querySelector(`[data-date="${date}"]`);
             if (element) {
                 element.scrollIntoView({ behavior: 'smooth', block: 'start' });
             } else {
                 alert('Tanggal tidak ditemukan dalam chat.');
             }
+        }
+    };
+    
+    const handleSearchKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            onFind();
         }
     };
   
@@ -28,14 +37,35 @@ function SettingsPanel({ isOpen, onClose, searchTerm, onSearchChange, theme, onT
         {/* Find Chat */}
         <div>
           <label htmlFor="search" className="block text-sm font-medium mb-1">Pencarian Pesan</label>
-          <input 
-            type="text" 
-            id="search" 
-            placeholder="Cari..." 
-            value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full bg-gray-700 rounded-md p-2 border border-transparent focus:ring-2 focus:ring-cyan-500 focus:outline-none" 
-          />
+          <div className="flex gap-2">
+            <input 
+              type="text" 
+              id="search" 
+              placeholder="Cari..." 
+              value={searchTerm}
+              onChange={(e) => onSearchChange(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+              className="w-full bg-gray-700 rounded-md p-2 border border-transparent focus:ring-2 focus:ring-cyan-500 focus:outline-none" 
+            />
+            <button onClick={onFind} className="p-2 bg-cyan-600 rounded-md hover:bg-cyan-500">
+                <FiSearch />
+            </button>
+          </div>
+          {resultCount > 0 && (
+            <div className="flex items-center justify-between mt-2 text-sm">
+                <span>{currentResultIndex + 1} dari {resultCount}</span>
+                <div className="flex gap-2">
+                    {/* Tombol ke atas (hasil sebelumnya / lebih lama) */}
+                    <button onClick={() => onNavigate(-1)} disabled={currentResultIndex <= 0} className="p-1 bg-gray-600 rounded-md hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <FiChevronUp />
+                    </button>
+                    {/* Tombol ke bawah (hasil setelahnya / lebih baru) */}
+                    <button onClick={() => onNavigate(1)} disabled={currentResultIndex >= resultCount - 1} className="p-1 bg-gray-600 rounded-md hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <FiChevronDown />
+                    </button>
+                </div>
+            </div>
+          )}
         </div>
 
         {/* Go To Date */}
