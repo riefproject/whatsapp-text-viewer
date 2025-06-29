@@ -92,7 +92,7 @@ function App() {
             return;
         }
         
-        // Konversi dari format YYYY-MM-DD (date picker) ke berbagai format yang mungkin
+        // Konversi dari format YYYY-MM-DD (date picker) ke format WhatsApp
         const dateParts = targetDate.split('-');
         if (dateParts.length !== 3) {
             alert('Format tanggal tidak valid. Silakan pilih tanggal yang benar.');
@@ -107,38 +107,26 @@ function App() {
             return;
         }
         
-        // Buat array format tanggal yang mungkin ditemukan di chat
-        const possibleFormats = [
-            `${parseInt(day)}/${parseInt(month)}/${year}`,     // 1/1/2024
-            `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`, // 01/01/2024
-            `${parseInt(day)}/${parseInt(month)}/${year.slice(-2)}`,     // 1/1/24
-            `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year.slice(-2)}`, // 01/01/24
-        ];
+        // Format tanggal yang benar untuk WhatsApp: DD/MM/YY
+        const targetFormattedDate = `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year.slice(-2)}`;
         
         // Debug: tampilkan format yang dicari
-        console.log('Mencari tanggal dengan format:', possibleFormats);
+        console.log('Mencari tanggal dengan format:', targetFormattedDate);
         
-        // Cari pesan pertama yang cocok dengan salah satu format
-        let messageIndex = -1;
-        
-        for (const format of possibleFormats) {
-            messageIndex = parsedData.messages.findIndex(msg => msg.date === format);
-            if (messageIndex !== -1) {
-                console.log('Ditemukan dengan format:', format);
-                break;
-            }
-        }
+        // Cari pesan pertama yang cocok dengan format tersebut
+        const messageIndex = parsedData.messages.findIndex(msg => msg.date === targetFormattedDate);
         
         if (messageIndex !== -1) {
+            console.log('Ditemukan dengan format:', targetFormattedDate);
             setTargetDateIndex(messageIndex);
         } else {
-            // Jika masih belum ketemu, coba pencarian yang lebih fleksibel
+            // Jika tidak ketemu, coba pencarian yang lebih fleksibel
             const targetDay = parseInt(day);
             const targetMonth = parseInt(month);
             const targetYear = parseInt(year);
             const targetYearShort = parseInt(year.slice(-2));
             
-            messageIndex = parsedData.messages.findIndex(msg => {
+            const flexibleIndex = parsedData.messages.findIndex(msg => {
                 // Parse tanggal dari pesan
                 const dateParts = msg.date.split('/');
                 if (dateParts.length !== 3) return false;
@@ -156,8 +144,8 @@ function App() {
                        (msgYear >= 2000 && msgYear === targetYear);
             });
             
-            if (messageIndex !== -1) {
-                setTargetDateIndex(messageIndex);
+            if (flexibleIndex !== -1) {
+                setTargetDateIndex(flexibleIndex);
             } else {
                 // Debug: tampilkan beberapa format tanggal yang ada di chat
                 const sampleDates = [...new Set(parsedData.messages.map(msg => msg.date))].slice(0, 5);

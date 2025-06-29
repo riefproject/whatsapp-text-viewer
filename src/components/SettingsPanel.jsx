@@ -81,10 +81,10 @@ function SettingsPanel({
               id="date-picker" 
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full bg-gray-700 rounded-md p-2 border border-transparent focus:ring-2 focus:ring-cyan-500 focus:outline-none text-white" 
+              className="w-full bg-gray-700 rounded-md p-2 border border-transparent focus:ring-2 focus:ring-cyan-500 focus:outline-none text-white [color-scheme:dark]" 
             />
              <button onClick={handleGoToDate} disabled={!date} className="p-2 bg-cyan-600 rounded-md hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed">
-                <FiCalendar />
+                <FiSearch />
              </button>
           </div>
         </div>
