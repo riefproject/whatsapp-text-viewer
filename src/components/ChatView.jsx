@@ -101,7 +101,10 @@ const ChatBubble = ({ message, isMe, isGroupChat, mediaEntries, searchTerm }) =>
 };
 
 // Main ChatView Component
-function ChatView({ messages, currentUser, opponentName, isGroupChat, onReset, onToggleSettings, mediaEntries, searchTerm, searchResultIndex }) {
+function ChatView({ 
+  messages, currentUser, opponentName, isGroupChat, onReset, onToggleSettings, 
+  mediaEntries, searchTerm, searchResultIndex, targetDateIndex, onDateNavigated 
+}) {
   const virtuosoRef = useRef(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -149,6 +152,21 @@ function ChatView({ messages, currentUser, opponentName, isGroupChat, onReset, o
         });
     }
   }, [searchResultIndex]);
+
+  // Efek untuk navigasi ke tanggal tertentu
+  useEffect(() => {
+    if (targetDateIndex !== undefined && targetDateIndex !== -1 && virtuosoRef.current) {
+        virtuosoRef.current.scrollToIndex({
+            index: targetDateIndex,
+            align: 'start',
+            behavior: 'smooth',
+        });
+        // Reset setelah navigasi
+        if (onDateNavigated) {
+            setTimeout(() => onDateNavigated(), 500);
+        }
+    }
+  }, [targetDateIndex, onDateNavigated]);
 
   // Scroll to bottom on initial load
   useEffect(() => {

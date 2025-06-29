@@ -4,18 +4,22 @@ import { useState } from 'react';
 function SettingsPanel({ 
     isOpen, onClose, searchTerm, onSearchChange, onFind,
     onNavigate, resultCount, currentResultIndex,
-    theme, onThemeChange, onStatsClick, onGalleryClick 
+    theme, onThemeChange, onStatsClick, onGalleryClick,
+    onGoToDate // Tambahkan prop baru untuk navigasi tanggal
 }) {
     const [date, setDate] = useState('');
 
     const handleGoToDate = () => {
-        if(date){
-            const element = document.querySelector(`[data-date="${date}"]`);
-            if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            } else {
-                alert('Tanggal tidak ditemukan dalam chat.');
+        if (date && onGoToDate) {
+            // Validasi format tanggal
+            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+            if (!dateRegex.test(date)) {
+                alert('Format tanggal tidak valid. Silakan pilih tanggal yang benar.');
+                return;
             }
+            
+            // Kirim langsung format YYYY-MM-DD ke parent
+            onGoToDate(date);
         }
     };
     
@@ -73,14 +77,13 @@ function SettingsPanel({
           <label htmlFor="date-picker" className="block text-sm font-medium mb-1">Lompat ke Tanggal</label>
           <div className="flex gap-2">
             <input 
-              type="text" 
+              type="date" 
               id="date-picker" 
-              placeholder="Contoh: 24/05/2024" 
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full bg-gray-700 rounded-md p-2 border border-transparent focus:ring-2 focus:ring-cyan-500 focus:outline-none" 
+              className="w-full bg-gray-700 rounded-md p-2 border border-transparent focus:ring-2 focus:ring-cyan-500 focus:outline-none text-white" 
             />
-             <button onClick={handleGoToDate} className="p-2 bg-cyan-600 rounded-md hover:bg-cyan-500">
+             <button onClick={handleGoToDate} disabled={!date} className="p-2 bg-cyan-600 rounded-md hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed">
                 <FiCalendar />
              </button>
           </div>

@@ -31,6 +31,9 @@ function App() {
     const [searchResults, setSearchResults] = useState([]); // Menyimpan index pesan yang cocok
     const [currentResultIndex, setCurrentResultIndex] = useState(-1); // Index dari searchResults
 
+    // State untuk navigasi tanggal
+    const [targetDateIndex, setTargetDateIndex] = useState(-1);
+
     // Reset semua state ke kondisi awal
     const resetState = () => {
         setParsedData(null);
@@ -44,6 +47,7 @@ function App() {
         setSearchTerm('');
         setSearchResults([]);
         setCurrentResultIndex(-1);
+        setTargetDateIndex(-1);
         setIsStatsModalOpen(false);
         setIsGalleryOpen(false);
     };
@@ -74,6 +78,95 @@ function App() {
         const newIndex = currentResultIndex + direction;
         if (newIndex >= 0 && newIndex < searchResults.length) {
             setCurrentResultIndex(newIndex);
+        }
+    };
+
+    // Fungsi untuk navigasi ke tanggal tertentu
+    const handleGoToDate = (targetDate) => {
+        if (!parsedData || !targetDate) return;
+        
+        // Validasi format date picker (YYYY-MM-DD)
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(targetDate)) {
+            alert('Format tanggal tidak valid. Silakan pilih tanggal yang benar.');
+            return;
+        }
+        
+        // Konversi dari format YYYY-MM-DD (date picker) ke berbagai format yang mungkin
+        const dateParts = targetDate.split('-');
+        if (dateParts.length !== 3) {
+            alert('Format tanggal tidak valid. Silakan pilih tanggal yang benar.');
+            return;
+        }
+        
+        const [year, month, day] = dateParts;
+        
+        // Validasi bahwa semua bagian ada dan valid
+        if (!year || !month || !day) {
+            alert('Format tanggal tidak valid. Silakan pilih tanggal yang benar.');
+            return;
+        }
+        
+        // Buat array format tanggal yang mungkin ditemukan di chat
+        const possibleFormats = [
+            `${parseInt(day)}/${parseInt(month)}/${year}`,     // 1/1/2024
+            `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`, // 01/01/2024
+            `${parseInt(day)}/${parseInt(month)}/${year.slice(-2)}`,     // 1/1/24
+            `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year.slice(-2)}`, // 01/01/24
+        ];
+        
+        // Debug: tampilkan format yang dicari
+        console.log('Mencari tanggal dengan format:', possibleFormats);
+        
+        // Cari pesan pertama yang cocok dengan salah satu format
+        let messageIndex = -1;
+        
+        for (const format of possibleFormats) {
+            messageIndex = parsedData.messages.findIndex(msg => msg.date === format);
+            if (messageIndex !== -1) {
+                console.log('Ditemukan dengan format:', format);
+                break;
+            }
+        }
+        
+        if (messageIndex !== -1) {
+            setTargetDateIndex(messageIndex);
+        } else {
+            // Jika masih belum ketemu, coba pencarian yang lebih fleksibel
+            const targetDay = parseInt(day);
+            const targetMonth = parseInt(month);
+            const targetYear = parseInt(year);
+            const targetYearShort = parseInt(year.slice(-2));
+            
+            messageIndex = parsedData.messages.findIndex(msg => {
+                // Parse tanggal dari pesan
+                const dateParts = msg.date.split('/');
+                if (dateParts.length !== 3) return false;
+                
+                const msgDay = parseInt(dateParts[0]);
+                const msgMonth = parseInt(dateParts[1]);
+                const msgYear = parseInt(dateParts[2]);
+                
+                // Cocokkan hari dan bulan
+                if (msgDay !== targetDay || msgMonth !== targetMonth) return false;
+                
+                // Cocokkan tahun (bisa format 4 digit atau 2 digit)
+                return msgYear === targetYear || msgYear === targetYearShort || 
+                       (msgYear < 100 && msgYear === targetYearShort) ||
+                       (msgYear >= 2000 && msgYear === targetYear);
+            });
+            
+            if (messageIndex !== -1) {
+                setTargetDateIndex(messageIndex);
+            } else {
+                // Debug: tampilkan beberapa format tanggal yang ada di chat
+                const sampleDates = [...new Set(parsedData.messages.map(msg => msg.date))].slice(0, 5);
+                console.log('Sample tanggal di chat:', sampleDates);
+                
+                // Tampilkan pesan error yang lebih informatif
+                const formattedDate = `${targetDay}/${targetMonth}/${year}`;
+                alert(`Tanggal ${formattedDate} tidak ditemukan dalam chat.\n\nContoh format tanggal yang ada: ${sampleDates.join(', ')}`);
+            }
         }
     };
     
@@ -247,6 +340,8 @@ function App() {
                             mediaEntries={mediaMap}
                             searchTerm={searchTerm} 
                             searchResultIndex={searchResults[currentResultIndex]}
+                            targetDateIndex={targetDateIndex}
+                            onDateNavigated={() => setTargetDateIndex(-1)}
                         />
                         {isSettingsOpen && (
                             <div 
@@ -268,6 +363,7 @@ function App() {
                             onThemeChange={setTheme}
                             onStatsClick={() => setIsStatsModalOpen(true)}
                             onGalleryClick={() => setIsGalleryOpen(true)}
+                            onGoToDate={handleGoToDate}
                         />
                     </div>
                     <ChatStatsModal 
