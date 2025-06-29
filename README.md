@@ -53,7 +53,7 @@ Interested in running the project locally or contributing? Follow these simple s
 
 1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/riefproject/whatsapp-text-viewer.git](https://github.com/riefproject/whatsapp-text-viewer.git)
+    git clone https://github.com/riefproject/whatsapp-text-viewer.git
     ```
 2.  **Navigate to the project directory:**
     ```bash
