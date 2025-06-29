@@ -1,6 +1,4 @@
-// src/App.jsx
-
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useMemo, useEffect } from 'react';
 import * as zip from '@zip.js/zip.js';
 import { parseWhatsAppChat } from './utils/ChatParser';
 import { mapMediaFilesToEntries } from './utils/zipHelper';
@@ -9,18 +7,27 @@ import FileUpload from './components/FileUpload';
 import UserSelection from './components/UserSelection';
 import ChatView from './components/ChatView';
 import SettingsPanel from './components/SettingsPanel';
-import FileSelection from './components/media/FileSelection'; // <- Impor komponen baru
+import FileSelection from './components/media/FileSelection';
+import ChatStatsModal from './components/ChatStatsModal'; // <- Impor
+import MediaGallery from './components/MediaGallery'; // <- Impor
 
 function App() {
     const [parsedData, setParsedData] = useState(null);
-    const [foundTextFiles, setFoundTextFiles] = useState([]); // <- State baru untuk menyimpan file .txt dari zip
+    const [foundTextFiles, setFoundTextFiles] = useState([]);
     const [currentUser, setCurrentUser] = useState(null);
     const [error, setError] = useState('');
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-    const [isLoading, setIsLoading] = useState(false); // <- State untuk loading
+    const [isLoading, setIsLoading] = useState(false);
     const [zipEntries, setZipEntries] = useState(null);
     const [mediaMap, setMediaMap] = useState({});
 
+    // State untuk fitur baru
+    const [searchTerm, setSearchTerm] = useState('');
+    const [theme, setTheme] = useState('dark'); // 'dark', 'light', etc
+    const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
+    const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+
+    // Reset semua state ke kondisi awal
     const resetState = () => {
         setParsedData(null);
         setFoundTextFiles([]);
@@ -30,8 +37,12 @@ function App() {
         setError('');
         setIsSettingsOpen(false);
         setIsLoading(false);
+        setSearchTerm('');
+        setIsStatsModalOpen(false);
+        setIsGalleryOpen(false);
     };
 
+    // Proses konten teks dan update state
     const processTextContent = (textContent) => {
         const result = parseWhatsAppChat(textContent);
         if (result && result.messages.length > 0) {
@@ -41,7 +52,8 @@ function App() {
             throw new Error("Gagal mem-parsing file. Pastikan formatnya benar dan file tidak kosong.");
         }
     };
-
+    
+    // Penanganan file yang di-upload
     const handleFileAccepted = useCallback(async (acceptedFiles) => {
         const file = acceptedFiles[0];
         if (!file) return;
@@ -53,7 +65,7 @@ function App() {
             if (file.type === 'application/zip' || file.name.endsWith('.zip')) {
                 const zipReader = new zip.ZipReader(new zip.BlobReader(file));
                 const entries = await zipReader.getEntries();
-                setZipEntries(entries); // Store all ZIP entries
+                setZipEntries(entries);
                 
                 const textFiles = entries.filter(entry => !entry.directory && entry.filename.endsWith('.txt'));
 
@@ -64,19 +76,15 @@ function App() {
                     const parsedResult = parseWhatsAppChat(textContent);
                     
                     if (parsedResult) {
-                        // Map media files to entries
                         const mediaMapping = mapMediaFilesToEntries(entries, parsedResult.messages);
                         setMediaMap(mediaMapping);
                         setParsedData(parsedResult);
                     } else {
-                        throw new Error("Gagal mem-parsing file. Pastikan formatnya benar dan file tidak kosong.");
+                        throw new Error("Gagal mem-parsing file.");
                     }
                 } else {
-                    // Jika ada lebih dari 1 file .txt, tampilkan pilihan
                     setFoundTextFiles(textFiles);
                 }
-                
-                // Jangan tutup zipReader di sini jika file akan dibaca nanti
             } else {
                 const textContent = await file.text();
                 processTextContent(textContent);
@@ -88,36 +96,35 @@ function App() {
             setIsLoading(false);
         }
     }, []);
-
+    
+    // Penanganan pemilihan file dari beberapa opsi .txt
     const handleFileSelect = async (fileEntry) => {
         if (!fileEntry) return;
-
         setIsLoading(true);
         setError('');
-        setFoundTextFiles([]); // Kosongkan pilihan file
+        setFoundTextFiles([]);
 
         try {
             const textContent = await fileEntry.getData(new zip.TextWriter());
             const parsedResult = parseWhatsAppChat(textContent);
             
             if (parsedResult) {
-                // Map media files to entries if we have zip entries
                 if (zipEntries) {
                     const mediaMapping = mapMediaFilesToEntries(zipEntries, parsedResult.messages);
                     setMediaMap(mediaMapping);
                 }
                 setParsedData(parsedResult);
             } else {
-                throw new Error("Gagal mem-parsing file. Pastikan formatnya benar dan file tidak kosong.");
+                throw new Error("Gagal mem-parsing file yang dipilih.");
             }
         } catch (err) {
             console.error(err);
-            setError(err.message || "Gagal membaca file yang dipilih.");
+            setError(err.message || "Gagal membaca file.");
         } finally {
             setIsLoading(false);
         }
     };
-
+    
     const handleUserSelect = (selectedUser) => {
         setCurrentUser(selectedUser);
     };
@@ -126,16 +133,76 @@ function App() {
         setIsSettingsOpen(prev => !prev);
     };
 
+    // Memoized, difilter berdasarkan searchTerm
+    const filteredMessages = useMemo(() => {
+        if (!parsedData) return [];
+        if (!searchTerm) return parsedData.messages;
+        return parsedData.messages.filter(msg =>
+            msg.message.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [parsedData, searchTerm]);
+
+    // Kalkulasi statistik
+    const chatStats = useMemo(() => {
+        if (!parsedData) return null;
+        const { messages, participants } = parsedData;
+        const senderCounts = messages.reduce((acc, msg) => {
+            acc[msg.sender] = (acc[msg.sender] || 0) + 1;
+            return acc;
+        }, {});
+        
+        const topSender = Object.entries(senderCounts).reduce((top, current) => {
+            return current[1] > top.count ? { sender: current[0], count: current[1] } : top;
+        }, { sender: '', count: 0 });
+
+        const mediaCount = messages.reduce((acc, msg) => {
+            if (msg.media) {
+                 acc[msg.media.type] = (acc[msg.media.type] || 0) + 1;
+            }
+            return acc;
+        }, { image: 0, video: 0, sticker: 0, audio: 0, document: 0, file: 0 });
+        
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        const linkCount = messages.reduce((count, msg) => {
+            const links = msg.message.match(urlRegex);
+            return count + (links ? links.length : 0);
+        }, 0);
+
+        return {
+            totalMessages: messages.length,
+            participantCount: participants.length,
+            topSender,
+            mediaCount,
+            linkCount
+        };
+    }, [parsedData]);
+    
+    // Ekstrak media, dokumen, dan link
+    const galleryData = useMemo(() => {
+        if (!parsedData) return { media: [], docs: [], links: [] };
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        const media = parsedData.messages.filter(m => m.media && (m.media.type === 'image' || m.media.type === 'video' || m.media.type === 'sticker'));
+        const docs = parsedData.messages.filter(m => m.media && (m.media.type === 'document' || m.media.type === 'file' || m.media.type === 'audio'));
+        const links = parsedData.messages.flatMap(m => m.message.match(urlRegex) || []);
+        return { media, docs, links };
+    }, [parsedData]);
+    
+    // Efek untuk tema
+    useEffect(() => {
+        document.documentElement.setAttribute('data-theme', theme);
+    }, [theme]);
+
+    // Render konten utama berdasarkan state
     const renderMainContent = () => {
         if (isLoading) {
             return <p className="text-xl text-gray-300">Memproses file...</p>;
         }
         if (error) {
              return (
-                <>
+                <div className="text-center">
                     <p className="text-red-400 mb-4 bg-red-900/50 p-3 rounded-lg">{error}</p>
                     <button onClick={resetState} className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg">Coba Lagi</button>
-                </>
+                </div>
              )
         }
         if (foundTextFiles.length > 0) {
@@ -146,26 +213,50 @@ function App() {
             const isGroupChat = parsedData.participants.length > 2;
 
             return (
-                <div className="w-full flex justify-center items-start gap-6">
-                    <ChatView 
-                        messages={parsedData.messages} 
-                        currentUser={currentUser}
-                        opponentName={opponentName}
-                        isGroupChat={isGroupChat}
-                        onReset={resetState}
-                        onToggleSettings={toggleSettingsPanel}
-                        mediaEntries={mediaMap}
-                    />
-                    {/* Backdrop untuk mobile, hanya muncul saat settings terbuka */}
-                    {isSettingsOpen && (
-                        <div 
-                            onClick={toggleSettingsPanel} 
-                            className="fixed inset-0 bg-black/50 z-10 md:hidden"
-                            aria-hidden="true"
+                <>
+                    <div className="w-full flex justify-center items-start gap-6">
+                        <ChatView 
+                            messages={filteredMessages} // <- Gunakan pesan yang sudah difilter
+                            currentUser={currentUser}
+                            opponentName={opponentName}
+                            isGroupChat={isGroupChat}
+                            onReset={resetState}
+                            onToggleSettings={toggleSettingsPanel}
+                            mediaEntries={mediaMap}
+                            searchTerm={searchTerm} // <- Prop baru untuk highlight
                         />
-                    )}
-                    {isSettingsOpen && <SettingsPanel onClose={toggleSettingsPanel} />}
-                </div>
+                        {isSettingsOpen && (
+                            <div 
+                                onClick={toggleSettingsPanel} 
+                                className="fixed inset-0 bg-black/50 z-10 md:hidden"
+                                aria-hidden="true"
+                            />
+                        )}
+                        <SettingsPanel 
+                            isOpen={isSettingsOpen}
+                            onClose={toggleSettingsPanel}
+                            searchTerm={searchTerm}
+                            onSearchChange={setSearchTerm}
+                            theme={theme}
+                            onThemeChange={setTheme}
+                            onStatsClick={() => setIsStatsModalOpen(true)}
+                            onGalleryClick={() => setIsGalleryOpen(true)}
+                        />
+                    </div>
+                    <ChatStatsModal 
+                        isOpen={isStatsModalOpen}
+                        onClose={() => setIsStatsModalOpen(false)}
+                        stats={chatStats}
+                    />
+                    <MediaGallery
+                        isOpen={isGalleryOpen}
+                        onClose={() => setIsGalleryOpen(false)}
+                        media={galleryData.media}
+                        docs={galleryData.docs}
+                        links={galleryData.links}
+                        mediaMap={mediaMap}
+                    />
+                </>
             );
         }
         if (parsedData) {
