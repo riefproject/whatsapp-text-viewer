@@ -1,3 +1,5 @@
+// src/components/media/MediaRenderer.jsx
+
 import ImageView from './ImageView';
 import StickerView from './StickerView';
 import VideoView from './VideoView';
@@ -5,7 +7,7 @@ import AudioView from './AudioView';
 import DocumentView from './DocumentView';
 import FileView from './FileView';
 
-const MediaRenderer = ({ media, zipEntries = null }) => {
+const MediaRenderer = ({ media, zipEntries = null, displayMode = 'bubble' }) => {
   if (!media) return null;
   
   const { type, name } = media;
@@ -26,13 +28,13 @@ const MediaRenderer = ({ media, zipEntries = null }) => {
   
   switch (type) {
     case 'image':
-      return <ImageView filename={name} file={mediaFile} />;
+      return <ImageView filename={name} file={mediaFile} displayMode={displayMode} />;
     
     case 'sticker':
       return <StickerView filename={name} file={mediaFile} />;
     
     case 'video':
-      return <VideoView filename={name} file={mediaFile} />;
+      return <VideoView filename={name} file={mediaFile} displayMode={displayMode} />;
     
     case 'audio':
       return <AudioView filename={name} file={mediaFile} />;
