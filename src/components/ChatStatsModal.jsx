@@ -12,7 +12,7 @@ function ChatStatsModal({ isOpen, onClose, stats }) {
         </div>
         <div className="p-6 text-gray-300">
           {stats ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="bg-gray-700 p-4 rounded-lg flex items-center">
                 <FiMessageSquare size={24} className="mr-4 text-cyan-400" />
                 <div>
@@ -27,7 +27,7 @@ function ChatStatsModal({ isOpen, onClose, stats }) {
                   <div className="text-lg font-bold">{stats.participantCount}</div>
                 </div>
               </div>
-              <div className="bg-gray-700 p-4 rounded-lg flex items-center col-span-1 md:col-span-2">
+              <div className="bg-gray-700 p-4 rounded-lg flex items-center col-span-2">
                 <FiAward size={24} className="mr-4 text-amber-400" />
                 <div>
                   <div className="text-sm text-gray-400">Pengirim Terbanyak</div>
